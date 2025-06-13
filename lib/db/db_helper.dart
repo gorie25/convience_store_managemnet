@@ -14,19 +14,13 @@ class DBHelper {
   }
 
   static Box getBox(String name) => Hive.box(name);
-static Future<dynamic> insertInstanceTest(
-    String table,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<dynamic> insertInstanceTest(String table, Map<String, dynamic> data) async {
     final box = getBox(table);
     print('Data before add: $data');
     return await box.add(data);
   }
-  static Future<dynamic> insertInstance(
-    String table,
-    String key,
-    Map<String, dynamic> data,
-  ) async {
+
+  static Future<dynamic> insertInstance(String table, String key, Map<String, dynamic> data) async {
     final box = getBox(table);
     final value = data[key]?.toString() ?? '';
 
@@ -36,11 +30,7 @@ static Future<dynamic> insertInstanceTest(
       prefix = key.substring(2); // Loại bỏ 'MA' đầu, ví dụ: MANV -> NV
     }
     if (value.isEmpty || !value.startsWith(prefix)) {
-      final allKeys =
-          box.values
-              .map((e) => (e as Map)[key]?.toString() ?? '')
-              .where((ma) => ma.startsWith(prefix))
-              .toList();
+      final allKeys = box.values.map((e) => (e as Map)[key]?.toString() ?? '').where((ma) => ma.startsWith(prefix)).toList();
       int maxNum = 0;
       for (var ma in allKeys) {
         final numStr = ma.replaceAll(prefix, '');
@@ -106,52 +96,67 @@ static Future<dynamic> insertInstanceTest(
     return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
-  static Future<void> updateInstance(
-    String table,
-    String key,
-    String id,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<void> updateInstance(String table, Map<String, dynamic> data) async {
     final box = getBox(table);
-    final hiveKey = box.keys.firstWhere((k) {
-      final item = box.get(k) as Map?;
-      return item != null && item[key] == id;
-    }, orElse: () => null);
-    if (hiveKey != null) {
-      await box.put(hiveKey, data);
+    final primaryKey = getPrimaryKeyForTable(table);
+
+    if (primaryKey != null && data.containsKey(primaryKey)) {
+      final id = data[primaryKey].toString();
+      final hiveKey = box.keys.firstWhere((k) {
+        final item = box.get(k) as Map?;
+        return item != null && item[primaryKey] == id;
+      }, orElse: () => null);
+
+      if (hiveKey != null) {
+        await box.put(hiveKey, data);
+      }
     }
   }
 
-  static Future<void> deleteInstance(
-    String table,
-    String key,
-    String id,
-  ) async {
-    final box = getBox(table);
+static Future<void> deleteInstance(String table, String id) async {
+  final box = getBox(table);
+  final primaryKey = getPrimaryKeyForTable(table);
+
+  if (primaryKey != null) {
     final hiveKey = box.keys.firstWhere((k) {
       final item = box.get(k) as Map?;
-      return item != null && item[key] == id;
+      return item != null && item[primaryKey].toString() == id;
     }, orElse: () => null);
+
     if (hiveKey != null) {
       await box.delete(hiveKey);
     }
   }
+}
 
-  static Future<void> clearTable(String table) async {
-    final box = getBox(table);
-    await box.clear();
+  // Helper function to determine primary key based on table name
+  static String? getPrimaryKeyForTable(String table) {
+    switch (table) {
+      case 'NHANVIEN':
+        return 'MANV';
+      case 'KHACHHANG':
+        return 'MAKH';
+      case 'SANPHAM':
+        return 'MASP';
+      case 'HOADON':
+        return 'MAHD';
+      case 'KHUYENMAI':
+        return 'MAKM';
+      case 'CTHD':
+        return 'MACTHD';
+      case 'CHAMCONG':
+        return 'MACC';
+      case 'NHAPHANG':
+        return 'MANH';
+      default:
+        return null;
+    }
   }
 
-  static Future<Map<String, dynamic>?> getInstanceByID(
-    String table,
-    String key,
-    String id,
-  ) async {
+  static Future<Map<String, dynamic>?> getInstanceByID(String table, String key, String id) async {
     final box = getBox(table);
     try {
-      final found = box.values.cast<Map>().firstWhere(
-        (item) => item[key] == id,
-      );
+      final found = box.values.cast<Map>().firstWhere((item) => item[key] == id);
       return Map<String, dynamic>.from(found);
     } catch (e) {
       return null;

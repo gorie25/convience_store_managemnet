@@ -12,12 +12,12 @@ class NhanVienRepository {
   }
 
   // Sửa thông tin nhân viên
-  static Future<void> suaNV(String maNV, Map<String, dynamic> data) async {
-    await DBHelper.updateInstance('NHANVIEN', 'MANV', maNV, data);
+  static Future<void> suaNV(Map<String, dynamic> data) async {
+    await DBHelper.updateInstance('NHANVIEN',data);
   }
 
   // Xóa nhân viên
   static Future<void> xoaNV(String maNV) async {
-    await DBHelper.deleteInstance('NHANVIEN', 'MANV', maNV);
+    await DBHelper.deleteInstance('NHANVIEN', maNV);
   }
 }
